@@ -44,13 +44,16 @@ public class EnergyManager : MonoBehaviour
     // 当玩家与球体碰撞时调用
     private void OnTriggerEnter(Collider other)
     {
-        if (other.gameObject == ball)
+        if (other.gameObject.tag == "Grass" || other.gameObject.tag == "InfiniteGrass" || other.gameObject.tag == "respawn")
         {
             Debug.Log("Before collision, energy: " + energy); // 碰撞前打印能量值
             IncreaseEnergy();
             Debug.Log("After collision, energy: " + energy); // 碰撞后打印能量值
-            other.enabled = false; // 销毁球体
-            other.GetComponent<MeshRenderer>().enabled = false;
+            if (other.gameObject.tag == "Grass")
+            {
+                other.enabled = false; // 销毁球体
+                other.GetComponent<MeshRenderer>().enabled = false;
+            }
         }
     }
 

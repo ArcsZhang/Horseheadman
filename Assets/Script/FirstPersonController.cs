@@ -22,8 +22,11 @@ namespace StarterAssets
 		public float RotationSpeed = 1.0f;
 		[Tooltip("Acceleration and deceleration")]
 		public float SpeedChangeRate = 10.0f;
+        [Tooltip("Able to charge or not")]
+        public bool Corn = true;
+		public Vector3 Respawn = Vector3.zero;
 
-		[Space(10)]
+        [Space(10)]
 		[Tooltip("The height the player can jump")]
 		public float JumpHeight = 1.2f;
 		[Tooltip("The character uses its own gravity value. The engine default is -9.81f")]
@@ -203,7 +206,14 @@ namespace StarterAssets
 
             if (inputDirection.z > 0f)
 			{
-                vectorTargetSpeed.z = vectorTargetSpeed.z * (1 + (ForwardBoost - 1) * inputDirection.z * inputDirection.z);
+				if (Corn && Input.GetKey(KeyCode.LeftShift) && this.GetComponent<EnergyManager>().energyBar.value > 0f)
+				{
+                    vectorTargetSpeed.z = vectorTargetSpeed.z * (1 + (ForwardBoost - 1) * inputDirection.z * inputDirection.z) * (1 + (SprintBoost - 1) * inputDirection.z * inputDirection.z);
+                }
+                else
+				{
+                    vectorTargetSpeed.z = vectorTargetSpeed.z * (1 + (ForwardBoost - 1) * inputDirection.z * inputDirection.z);
+                }
             }
 
             // note: Vector2's != operator uses approximation so is not floating point error prone, and is cheaper than magnitude
@@ -368,6 +378,14 @@ namespace StarterAssets
             //{
             //    AudioSource.PlayClipAtPoint(LandingAudioClip, transform.TransformPoint(_controller.center), FootstepAudioVolume);
             //}
+        }
+
+        private void OnCollisionEnter(Collision collision)
+        {
+            if (collision.gameObject.tag == "repawn")
+			{
+				Respawn = collision.transform.position;
+			}
         }
     }
 }
