@@ -14,8 +14,10 @@ namespace StarterAssets
 		[Header("Player")]
 		[Tooltip("Move speed of the character in m/s")]
 		public float MoveSpeed = 4.0f;
-		[Tooltip("Sprint speed of the character in m/s")]
-		public float SprintSpeed = 6.0f;
+        [Tooltip("Forward move boost of the character in %")]
+        public float ForwardBoost = 2.0f;
+        [Tooltip("Sprint boost of the character in %")]
+		public float SprintBoost = 1.5f;
 		[Tooltip("Rotation speed of the character")]
 		public float RotationSpeed = 1.0f;
 		[Tooltip("Acceleration and deceleration")]
@@ -55,7 +57,7 @@ namespace StarterAssets
 		private float _cinemachineTargetPitch;
 
 		// player
-		private float _speed;
+		private Vector3 _speed;
         private float _animationBlend;
 		private float _rotationVelocity;
 		private float _verticalVelocity;
@@ -183,57 +185,80 @@ namespace StarterAssets
 		private void Move()
 		{
 			// set target speed based on move speed, sprint speed and if sprint is pressed
-			float targetSpeed = _input.sprint ? SprintSpeed : MoveSpeed;
+			float targetSpeed = MoveSpeed;
 
-			// a simplistic acceleration and deceleration designed to be easy to remove, replace, or iterate upon
+            // normalise input direction
+            Vector3 inputDirection = new Vector3(_input.move.x, 0.0f, _input.move.y).normalized;
 
-			// note: Vector2's == operator uses approximation so is not floating point error prone, and is cheaper than magnitude
-			// if there is no input, set the target speed to 0
-			if (_input.move == Vector2.zero) targetSpeed = 0.0f;
+            // note: Vector2's == operator uses approximation so is not floating point error prone, and is cheaper than magnitude
+            // if there is no input, set the target speed to 0
+            if (_input.move == Vector2.zero) targetSpeed = 0.0f;
 
-			// a reference to the players current horizontal velocity
-			float currentHorizontalSpeed = new Vector3(_controller.velocity.x, 0.0f, _controller.velocity.z).magnitude;
+            Vector3 vectorTargetSpeed = new Vector3(inputDirection.x * targetSpeed, 0.0f, inputDirection.z * targetSpeed);
 
-			float speedOffset = 0.1f;
-			float inputMagnitude = _input.analogMovement ? _input.move.magnitude : 1f;
+            // a reference to the players current horizontal velocity
+            Vector3 currentHorizontalSpeed = new Vector3(_controller.velocity.x, 0.0f, _controller.velocity.z);
 
-			// accelerate or decelerate to target speed
-			if (currentHorizontalSpeed < targetSpeed - speedOffset || currentHorizontalSpeed > targetSpeed + speedOffset)
+            // a simplistic acceleration and deceleration designed to be easy to remove, replace, or iterate upon
+
+            if (inputDirection.z > 0f)
 			{
-				// creates curved result rather than a linear one giving a more organic speed change
-				// note T in Lerp is clamped, so we don't need to clamp our speed
-				_speed = Mathf.Lerp(currentHorizontalSpeed, targetSpeed * inputMagnitude, Time.deltaTime * SpeedChangeRate);
+                vectorTargetSpeed.z = vectorTargetSpeed.z * (1 + (ForwardBoost - 1) * inputDirection.z * inputDirection.z);
+            }
 
-				// round speed to 3 decimal places
-				_speed = Mathf.Round(_speed * 1000f) / 1000f;
+            // note: Vector2's != operator uses approximation so is not floating point error prone, and is cheaper than magnitude
+            // if there is a move input rotate player when the player is moving
+            if (_input.move != Vector2.zero)
+            {
+                // move
+            }
+            inputDirection = transform.right * inputDirection.x + transform.forward * inputDirection.z;
+            vectorTargetSpeed = transform.right * vectorTargetSpeed.x + transform.forward * vectorTargetSpeed.z;
+
+            // accelerate or decelerate to target speed
+            if (Mathf.Abs(vectorTargetSpeed.x - currentHorizontalSpeed.x) > Time.deltaTime * SpeedChangeRate)
+			{
+                // creates curved result rather than a linear one giving a more organic speed change
+                // note T in Lerp is clamped, so we don't need to clamp our speed
+
+                _speed.x = Mathf.Lerp(currentHorizontalSpeed.x, vectorTargetSpeed.x, Time.deltaTime * SpeedChangeRate);
+
+
+                // round speed to 3 decimal places
+                _speed.x = Mathf.Round(_speed.x * 1000f) / 1000f;
 			}
 			else
 			{
-				_speed = targetSpeed;
+				_speed.x = vectorTargetSpeed.x;
 			}
+            if (Mathf.Abs(vectorTargetSpeed.z - currentHorizontalSpeed.z) > Time.deltaTime * SpeedChangeRate)
+            {
+                // creates curved result rather than a linear one giving a more organic speed change
+                // note T in Lerp is clamped, so we don't need to clamp our speed
 
-            _animationBlend = Mathf.Lerp(_animationBlend, targetSpeed, Time.deltaTime * SpeedChangeRate);
+                _speed.z = Mathf.Lerp(currentHorizontalSpeed.z, vectorTargetSpeed.z, Time.deltaTime * SpeedChangeRate);
+
+
+                // round speed to 3 decimal places
+                _speed.z = Mathf.Round(_speed.z * 1000f) / 1000f;
+            }
+            else
+            {
+                _speed.z = vectorTargetSpeed.z;
+            }
+
+			_animationBlend = currentHorizontalSpeed.magnitude;
             if (_animationBlend < 0.01f) _animationBlend = 0f;
-            
-			// normalise input direction
-            Vector3 inputDirection = new Vector3(_input.move.x, 0.0f, _input.move.y).normalized;
-
-			// note: Vector2's != operator uses approximation so is not floating point error prone, and is cheaper than magnitude
-			// if there is a move input rotate player when the player is moving
-			if (_input.move != Vector2.zero)
-			{
-				// move
-				inputDirection = transform.right * _input.move.x + transform.forward * _input.move.y;
-			}
+			
 
 			// move the player
-			_controller.Move(inputDirection.normalized * (_speed * Time.deltaTime) + new Vector3(0.0f, _verticalVelocity, 0.0f) * Time.deltaTime);
+			_controller.Move(new Vector3(_speed.x * Time.deltaTime, _verticalVelocity * Time.deltaTime, _speed.z * Time.deltaTime));
 
             // update animator if using character
             if (_hasAnimator)
             {
                 _animator.SetFloat(_animIDSpeed, _animationBlend);
-                _animator.SetFloat(_animIDMotionSpeed, inputMagnitude);
+                _animator.SetFloat(_animIDMotionSpeed, currentHorizontalSpeed.normalized.magnitude);
             }
         }
 

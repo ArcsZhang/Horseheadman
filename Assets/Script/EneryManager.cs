@@ -12,7 +12,6 @@ public class EnergyManager : MonoBehaviour
     public GameObject ball; // 球体对象
 
     private CharacterController characterController; // 引用玩家的 CharacterController
-    private bool isMoving = false; // 判断玩家是否在移动
 
     void Start()
     {
@@ -26,36 +25,19 @@ public class EnergyManager : MonoBehaviour
 
     void Update()
     {
-        // 通过速度检测玩家是否在移动
-        CheckPlayerMovement();
 
         // 如果玩家在移动，减少能量
-        if (isMoving)
+        if (Input.GetKey(KeyCode.LeftShift))
         {
             energy -= energyDecreaseRate * Time.deltaTime;
             energy = Mathf.Clamp(energy, 0, 100); // 保证能量值在0-100之间
             energyBar.value = energy;
-            Debug.Log("Player is moving. Current energy: " + energy); // 打印当前能量值
         }
 
         // 检查能量是否为 0
         if (energy <= 0)
         {
-            EndGame(); // 调用结束游戏方法
-        }
-    }
-
-    // 检查玩家是否在移动
-    private void CheckPlayerMovement()
-    {
-        // 检查玩家当前的水平速度是否大于一个非常小的值（表示正在移动）
-        if (characterController.velocity.magnitude > 0.1f)
-        {
-            isMoving = true;
-        }
-        else
-        {
-            isMoving = false;
+            // EndGame(); 调用结束游戏方法
         }
     }
 
@@ -67,7 +49,8 @@ public class EnergyManager : MonoBehaviour
             Debug.Log("Before collision, energy: " + energy); // 碰撞前打印能量值
             IncreaseEnergy();
             Debug.Log("After collision, energy: " + energy); // 碰撞后打印能量值
-            Destroy(ball); // 销毁球体
+            other.enabled = false; // 销毁球体
+            other.GetComponent<MeshRenderer>().enabled = false;
         }
     }
 
